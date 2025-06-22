@@ -1,0 +1,153 @@
+
+
+##  1. **European Options**
+
+###  Black–Scholes Formula
+
+Used for **European-style options** (exercisable only at maturity).
+
+#### Call Option:
+
+$$
+C = S_0 \cdot N(d_1) - K e^{-rT} \cdot N(d_2)
+$$
+
+#### Put Option:
+
+$$
+P = K e^{-rT} \cdot N(-d_2) - S_0 \cdot N(-d_1)
+$$
+
+Where:
+
+$$
+d_1 = \frac{\ln(S_0 / K) + (r + \sigma^2 / 2) T}{\sigma \sqrt{T}}, \quad
+d_2 = d_1 - \sigma \sqrt{T}
+$$
+
+---
+
+###  Monte Carlo Method
+
+#### General Idea:
+
+Simulate many paths for $S_T$ under **Geometric Brownian Motion** (GBM):
+
+$$
+S_T = S_0 \cdot \exp\left[\left(r - \frac{1}{2} \sigma^2\right) T + \sigma \sqrt{T} \cdot Z\right]
+$$
+
+Where $Z \sim \mathcal{N}(0,1)$
+
+#### Call Payoff:
+
+$$
+C \approx e^{-rT} \cdot \frac{1}{N} \sum_{i=1}^{N} \max(S_T^{(i)} - K, 0)
+$$
+
+#### Put Payoff:
+
+$$
+P \approx e^{-rT} \cdot \frac{1}{N} \sum_{i=1}^{N} \max(K - S_T^{(i)}, 0)
+$$
+
+---
+
+## 2. **Asian Options**
+
+Asian options depend on the **average price** of the underlying asset over time.
+
+---
+
+### Black–Scholes (Geometric Average Only)
+
+For **geometric average Asian options** (European-style only):
+
+#### Adjusted Parameters:
+
+$$
+\sigma_{\text{hat}} = \frac{\sigma}{\sqrt{3}}, \quad \mu_{\text{hat}} = \frac{1}{2}(r - \frac{1}{2} \sigma^2) + \frac{\sigma_{\text{hat}}^2}{2}
+$$
+
+#### Call Option:
+
+$$
+C_{\text{geo}} = e^{-rT} \left(S_0 e^{\mu_{\text{hat}} T} N(d_1) - K N(d_2)\right)
+$$
+
+#### Put Option:
+
+$$
+P_{\text{geo}} = e^{-rT} \left(K N(-d_2) - S_0 e^{\mu_{\text{hat}} T} N(-d_1)\right)
+$$
+
+Where:
+
+$$
+d_1 = \frac{\ln(S_0 / K) + (\mu_{\text{hat}} + 0.5 \sigma_{\text{hat}}^2) T}{\sigma_{\text{hat}} \sqrt{T}}, \quad d_2 = d_1 - \sigma_{\text{hat}} \sqrt{T}
+$$
+
+---
+
+### Monte Carlo (Arithmetic Average)
+
+#### Arithmetic Average:
+
+$$
+\bar{S} = \frac{1}{n} \sum_{i=1}^{n} S_{t_i}
+$$
+
+Simulate asset paths with $n$ time steps.
+
+#### Call Payoff:
+
+$$
+C_{\text{arith}} \approx e^{-rT} \cdot \frac{1}{N} \sum_{i=1}^{N} \max(\bar{S}^{(i)} - K, 0)
+$$
+
+#### Put Payoff:
+
+$$
+P_{\text{arith}} \approx e^{-rT} \cdot \frac{1}{N} \sum_{i=1}^{N} \max(K - \bar{S}^{(i)}, 0)
+$$
+
+---
+
+## 3. **American Options**
+
+American options allow **early exercise** any time before expiry. No closed-form Black–Scholes solution exists (except for non-dividend-paying calls).
+
+---
+
+### Least-Squares Monte Carlo (LSM) – by Longstaff-Schwartz
+
+1. Simulate multiple paths of the asset price.
+2. At each time step, identify **in-the-money** paths.
+3. Use regression to estimate the **expected continuation value**.
+4. Compare immediate exercise vs continuation.
+5. Store the optimal value at each step (i.e., perform **backward induction**).
+
+#### Payoff at each time step:
+
+$$
+\text{Exercise value} = 
+\begin{cases}
+\max(S_t - K, 0) & \text{(call)} \\
+\max(K - S_t, 0) & \text{(put)}
+\end{cases}
+$$
+
+Final price is the discounted average of optimal payoffs.
+
+---
+
+###  Summary Table
+
+| Option Type                  |Black-Scholes Formula|Monte Carlo Formula                    |
+| ---------------------------- |---------------------|---------------------------------------|
+| European Call/Put            |  Exact              | Approximate                           |
+| Asian Call/Put (Geometric)   |  Approximate        | Approximate (Geometric or Arithmetic) |
+| American Call (no dividends) |  Same as European   | Approximate (LSM)                     |
+| American Put                 |  No exact formula   | Approximate (LSM)                     |
+
+
