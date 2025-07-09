@@ -20,23 +20,23 @@ def optimize():
         start_date = data['start_date']
         end_date = data['end_date']
 
-        # Download price data with adjusted close
+
         prices = yf.download(tickers, start=start_date, end=end_date, auto_adjust=False)
 
-        # Check if 'Adj Close' exists
+
         if 'Adj Close' not in prices.columns:
             return jsonify({'error': 'Adj Close prices not found'}), 400
 
         adj_close = prices['Adj Close']
 
-        # If single ticker, convert Series to DataFrame
+
         if isinstance(adj_close, pd.Series):
             adj_close = adj_close.to_frame()
 
-        # Reorder columns to match tickers list exactly
+
         adj_close = adj_close[tickers]
 
-        # Calculate returns based on adjusted close
+
         returns = adj_close.pct_change().dropna()
         mean_returns = returns.mean()
         cov_matrix = returns.cov()
