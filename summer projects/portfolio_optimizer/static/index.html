@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Portfolio Optimization Simulator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 10px;
+  }
+  label {
+    display: block;
+    margin: 10px 0 5px;
+  }
+  input, button {
+    padding: 8px;
+    font-size: 1em;
+    width: 100%;
+    max-width: 400px;
+  }
+  button {
+    margin-top: 15px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+  }
+  #result {
+    margin-top: 25px;
+  }
+  .error {
+    color: red;
+    font-weight: bold;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  th, td {
+    padding: 8px;
+    text-align: center;
+  }
+  th {
+    background-color: #4CAF50;
+    color: white;
+  }
+  tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+</style>
+</head>
+<body>
+<h1>Portfolio Optimization Simulator</h1>
+
+<form id="portfolioForm">
+  <label for="tickers">Tickers (comma-separated, e.g. AAPL, MSFT, GOOGL):</label>
+  <input type="text" id="tickers" name="tickers" required />
+
+  <label for="start_date">Start Date (YYYY-MM-DD):</label>
+  <input type="date" id="start_date" name="start_date" required />
+
+  <label for="end_date">End Date (YYYY-MM-DD):</label>
+  <input type="date" id="end_date" name="end_date" required />
+
+  <button type="submit">Optimize Portfolio</button>
+</form>
+
+<div id="result"></div>
+
+<script>
+document.getElementById('portfolioForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const tickers = document.getElementById('tickers').value;
+  const start_date = document.getElementById('start_date').value;
+  const end_date = document.getElementById('end_date').value;
+
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = "Running optimization...";
+
+  fetch('/optimize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tickers, start_date, end_date })
+  })
+  .then(async res => {
+    const text = await res.text();
+    try {
+      const data = JSON.parse(text);
+      if (data.error) {
+        resultDiv.innerHTML = `<p class="error">${data.error}</p>`;
+        return;
+      }
+
+      // Show Optimal Weights
+      let html = `<h3>Optimal Portfolio Weights</h3><ul>`;
+      for (const [ticker, weight] of Object.entries(data.optimal_weights)) {
+        html += `<li><strong>${ticker}</strong>: ${weight}</li>`;
+      }
+      html += `</ul>`;
+
+      // Show Portfolio Metrics
+      html += `<h3>Portfolio Metrics</h3>`;
+      html += `<p><strong>Expected Annual Return:</strong> ${(data.expected_annual_return * 100).toFixed(2)}%</p>`;
+      html += `<p><strong>Annual Volatility (Risk):</strong> ${(data.annual_volatility * 100).toFixed(2)}%</p>`;
+      html += `<p><strong>Sharpe Ratio:</strong> ${data.sharpe_ratio}</p>`;
+
+      // Show Adj Close Prices Table
+      if (data.adj_close_prices) {
+        html += `<h3>Last 5 Days Adjusted Close Prices</h3>`;
+        html += `<table border="1" cellpadding="5" cellspacing="0"><thead><tr><th>Date</th>`;
+
+        const tickers = Object.keys(data.adj_close_prices[0]).filter(k => k !== 'Date');
+        tickers.forEach(t => {
+          html += `<th>${t}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+
+        data.adj_close_prices.forEach(row => {
+          html += `<tr><td>${row.Date.split('T')[0]}</td>`;
+          tickers.forEach(t => {
+            html += `<td>${row[t]}</td>`;
+          });
+          html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+      }
+
+      resultDiv.innerHTML = html;
+
+    } catch (e) {
+      resultDiv.innerHTML = `<p class="error">Unexpected response: ${text}</p>`;
+    }
+  })
+  .catch(err => {
+    resultDiv.innerHTML = `<p class="error">Error: ${err}</p>`;
+  });
+});
+</script>
+</body>
+</html>
