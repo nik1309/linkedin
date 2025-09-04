@@ -1,0 +1,158 @@
+### Trading Strategy Comparison and Code Explanation
+
+---
+
+# **1. SMA50/SMA200 Crossover Strategy (Trend-Following)**
+
+## How it works:
+
+* This strategy uses **moving averages** to identify trends.
+* **SMA50**: average of the last 50 closing prices.
+* **SMA200**: average of the last 200 closing prices.
+* **Signal**:
+
+  * Buy (go long) when SMA50 is above SMA200, indicating an upward trend.
+  * Stay in cash when SMA50 is below SMA200, indicating a downward trend.
+* Only takes **long positions**.
+
+## Pros:
+
+* Simple and robust.
+* Captures long-term trends.
+* Low trading frequency reduces transaction costs.
+* Easy to monitor visually.
+
+## Cons:
+
+* Generates signals late due to reliance on averages.
+* Not effective in sideways or choppy markets.
+* May have lower returns in volatile periods.
+
+## Code Explanation:
+
+```python
+df['SMA50'] = df['Close'].rolling(window=50).mean()  # Average of last 50 days
+df['SMA200'] = df['Close'].rolling(window=200).mean() # Average of last 200 days
+```
+
+* Calculates moving averages using the closing price over the specified number of days.
+
+```python
+df['Signal'] = np.where(df['SMA50'] > df['SMA200'], 1, 0)
+```
+
+* Generates a **signal column**: 1 if SMA50 > SMA200 (buy), 0 otherwise (stay in cash).
+
+```python
+df['Position'] = df['Signal'].shift(1)
+```
+
+* Shifts the signal down by one day so that trades are executed based on previous day's information, avoiding use of future data.
+
+```python
+df['Returns'] = df['Close'].pct_change()
+df['Strategy_Returns'] = df['Position'] * df['Returns']
+```
+
+* Computes daily stock returns and then multiplies by position to get the strategy's returns.
+* If the position is 0, strategy earns nothing; if position is 1, it earns the stock return.
+
+```python
+df['Cumulative_Strategy'] = (1 + df['Strategy_Returns']).cumprod()
+```
+
+* Calculates cumulative growth of the strategy over time by compounding daily returns.
+
+```python
+sharpe_ratio = (df['Strategy_Returns'].mean() / df['Strategy_Returns'].std()) * np.sqrt(252)
+cumulative_return = df['Cumulative_Strategy'].iloc[-1] - 1
+cumulative_max = df['Cumulative_Strategy'].cummax()
+drawdown = (df['Cumulative_Strategy'] - cumulative_max) / cumulative_max
+max_drawdown = drawdown.min()
+```
+
+* **Sharpe ratio** measures risk-adjusted return.
+* **Cumulative return** measures overall profit.
+* **Drawdown** calculates the percentage drop from the highest point.
+* **Max drawdown** is the largest drop observed.
+
+---
+
+# **2. Momentum Strategy (Lookback-Based)**
+
+## How it works:
+
+* Measures recent stock performance over a specific **lookback period**.
+* **Signal**:
+
+  * Buy if price increased over the lookback period.
+  * Stay in cash if price decreased or stayed the same.
+* Only long positions are considered.
+* The lookback period can be optimized to improve performance.
+
+## Pros:
+
+* Reacts to short- and medium-term trends.
+* Can yield higher risk-adjusted returns.
+* Flexible across different stocks or time frames.
+
+## Cons:
+
+* Sensitive to the chosen lookback period.
+* Trades more frequently, increasing transaction costs.
+* May perform poorly during sudden reversals.
+
+## Code Explanation:
+
+```python
+df['Momentum'] = df['Close'].pct_change(lookback)  # % change over lookback
+```
+
+* Calculates the percentage change over the lookback period to determine momentum.
+
+```python
+df['Signal'] = np.where(df['Momentum'] > 0, 1, 0)
+df['Position'] = df['Signal'].shift(1)
+```
+
+* Generates the signal: 1 for positive momentum (buy), 0 otherwise.
+* Position is shifted by one day to use only past information.
+
+```python
+df['Returns'] = df['Close'].pct_change()
+df['Strategy_Returns'] = df['Position'] * df['Returns']
+df['Cumulative_Strategy'] = (1 + df['Strategy_Returns']).cumprod()
+```
+
+* Calculates daily returns, strategy returns based on position, and cumulative growth.
+
+```python
+sharpe_ratio = (df['Strategy_Returns'].mean() / df['Strategy_Returns'].std()) * np.sqrt(252)
+cumulative_return = df['Cumulative_Strategy'].iloc[-1] - 1
+cumulative_max = df['Cumulative_Strategy'].cummax()
+drawdown = (df['Cumulative_Strategy'] - cumulative_max) / cumulative_max
+max_drawdown = drawdown.min()
+```
+
+* Calculates performance metrics: Sharpe ratio, total return, and maximum drawdown.
+
+---
+
+# **Key Differences Between Strategies**
+
+| Feature           | SMA50/SMA200                       | Momentum                                     |
+| ----------------- | ---------------------------------- | -------------------------------------------- |
+| Basis             | Long-term moving averages          | Recent price changes over lookback period    |
+| Time Horizon      | Medium to long-term trends         | Short to medium-term trends                  |
+| Trading Frequency | Low                                | Medium                                       |
+| Pros              | Robust, low-cost, easy to follow   | Higher Sharpe potential, adaptive            |
+| Cons              | Late signals, ineffective sideways | Parameter sensitive, higher trading costs    |
+| Ideal Market      | Trending markets                   | Markets with strong short/medium-term trends |
+
+---
+
+# Summary
+
+* **SMA50/SMA200** captures long-term trends and is simple to follow but can lag.
+* **Momentum strategy** focuses on recent performance, can be more profitable if tuned correctly, but requires careful parameter selection and more frequent trading.
+* Both use signals to determine positions, calculate returns based on these positions, and measure performance with cumulative growth, Sharpe ratio, and drawdowns.
